@@ -1,0 +1,25 @@
+# Roots of the synchronization
+root = socket://127.0.0.1:unison_port/WEBSITE_DOCUMENT_ROOT
+root = ./projects/project_folder/public_html
+
+# Paths to synchronize 
+path = ./
+path = ./
+
+# Params
+fastercheckUNSAFE = true
+ignorelocks = true
+numericids = false
+log = true
+batch = true
+fastcheck = true
+maxthreads = 100
+confirmbigdel = false
+ignore = Path .git
+ignore = Path .idea
+ignore = Path .gitignore
+ignore = Path .gitattributes
+ignore = Path var/tmp
+ignore = Path .magento
+ignore = Path */update/vendor/composer/composer/tests/Composer/Test/Autoload/Fixtures/classmap/LargeClass.php
+prefer = socket://127.0.0.1:unison_port/WEBSITE_DOCUMENT_ROOT

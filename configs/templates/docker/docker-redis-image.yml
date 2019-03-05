@@ -1,0 +1,14 @@
+version: '2'
+
+services:
+   redis:
+     env_file: ./.env
+     container_name: ${PROJECT_NAME}_${CONTAINER_REDIS_NAME}
+     image: redis
+     restart: always
+     networks:
+       - env_devbox-network
+
+networks:
+   env_devbox-network:
+     external: true
