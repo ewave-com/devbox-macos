@@ -1,3 +1,2 @@
-
-https://devbox.ewavedemo.com/
-(engine / quality260)
+# MacOS DevBox
+https://devbox.ewave.com/
