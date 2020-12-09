@@ -6,6 +6,10 @@ root = ./projects/project_folder/public_html
 path = ./
 path = ./
 
+# Prevent permissions updating
+perms=0
+dontchmod=true
+
 # Params
 fastercheckUNSAFE = true
 ignorelocks = true
