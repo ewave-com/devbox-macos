@@ -1,5 +1,5 @@
 upstream fastcgi_backend {
-         server unix:/var/run/php7-fpm.sock;
+    server unix:/var/run/php7-fpm.sock;
 }
 
 server {
@@ -8,6 +8,9 @@ server {
 
     access_log /var/log/nginx/WEBSITE_HOST_NAME-access.log;
     error_log /var/log/nginx/WEBSITE_HOST_NAME-error.log;
+
+    fastcgi_buffer_size          128k;
+    fastcgi_buffers              8 256k;
 
     set $MAGE_ROOT WEBSITE_DOCUMENT_ROOT/;
     set $MAGE_MODE developer;

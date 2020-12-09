@@ -28,13 +28,19 @@ if [ ! -f  /usr/local/bin/docker ]; then
 fi
 
 if [ ! -f  /usr/local/bin/unison ]; then
-  ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+  isBrewInstalled=$(which brew)
+  if [ -z "${isBrewInstalled}" ]; then
+      #The Ruby Homebrew installer is now deprecated and has been rewritten in Bash
+      #ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+
   brew install python
   brew install unison
   brew install eugenmayer/dockersync/unox
+  brew install autozimu/homebrew-formulas/unison-fsmonitor
   brew install openssl
   sudo easy_install pip
-  sudo chmod +x /usr/local/bin/unison-fsmonitor
   sudo pip install macfsevents
 fi
 
@@ -141,11 +147,11 @@ fi
 
 mysql_check_used_port(){
 if [[ ! -z $CONTAINER_MYSQL_PORT ]];then
-  if [[ $CONTAINER_MYSQL_PORT < 3400 ]];then 
-  echo -e "$RED MYSQL port less then 3400 $SET. Set CONTAINER_MYSQL_PORT between 3400-3499"; exit 1;
+  if [[ $CONTAINER_MYSQL_PORT < 3306 ]];then
+  echo -e "$RED MYSQL port less then 3306 $SET. Set CONTAINER_MYSQL_PORT between 3306-3499"; exit 1;
   fi
-  if [[ $CONTAINER_MYSQL_PORT > 3499 ]];then 
-  echo -e "$RED MYSQL port more then 3499 $SET. Set CONTAINER_MYSQL_PORT between 3400-3499"; exit 1;
+  if [[ $CONTAINER_MYSQL_PORT > 3499 ]];then
+  echo -e "$RED MYSQL port more then 3499 $SET. Set CONTAINER_MYSQL_PORT between 3306-3499"; exit 1;
   fi
 fi  
 }
@@ -158,7 +164,7 @@ if [[ $count_stop_projects = 0 ]]; then
   if [[ -z $CONTAINER_MYSQL_PORT ]]; then
     mysql_port=$(netstat -anv | egrep -w [.] | grep LISTEN | grep "tcp4" |  awk '{print $4}' | grep "*." | grep 340 | cut -c3- | sort -g -r | head -n 1);
     if [[ -z "$mysql_port" ]]; then
-    mysql_port=3400
+    mysql_port=3306
     else
     mysql_port=$(($mysql_port +1))
     fi
@@ -233,22 +239,22 @@ echo ================================
 echo Copying DB Files to container
 sleep 10
 if [[ -z "$check_mysql_container_created" ]]; then
-  if [[ -d ./projects/$project_folder/db/mysql/ ]]; then 
-  docker cp ./projects/$project_folder/db/mysql/ "$PROJECT_NAME"_$CONTAINER_MYSQL_NAME:/var/lib/
-# fix after copy.Must have.
-  docker restart "$PROJECT_NAME"_$CONTAINER_MYSQL_NAME
+  if [[ -d ./projects/$project_folder/db/mysql/ ]]; then
+    docker cp ./projects/$project_folder/db/mysql/ "$PROJECT_NAME"_$CONTAINER_MYSQL_NAME:/var/lib/
+    # fix after copy.Must have.
+    docker restart "$PROJECT_NAME"_$CONTAINER_MYSQL_NAME
   fi
 fi
   echo ================================
 }
 
 presync_web () {
-echo ================================
-echo Copying WEB Files to container
-sleep 3
-if [[ -z "$check_web_container_created" ]]; then
-  docker cp ./projects/$project_folder/public_html/. "$PROJECT_NAME"_"$CONTAINER_WEB_NAME":"$WEBSITE_DOCUMENT_ROOT"
-fi
+  echo ================================
+  echo Copying WEB Files to container
+  sleep 3
+  if [[ -z "$check_web_container_created" ]]; then
+    docker cp ./projects/$project_folder/public_html/. "$PROJECT_NAME"_"$CONTAINER_WEB_NAME":"$WEBSITE_DOCUMENT_ROOT"
+  fi
   echo ================================
 }
 
@@ -274,12 +280,10 @@ fi
 
 # Skip generate SSL 
 ssl_off(){
-if [[ ! -f ./projects/$project_folder/docker-compose.yml ]]; then    
   mkdir -p ./configs/env/nginx/conf.d/
   mkdir -p ./configs/env/nginx/ssl/
   mkdir -p ./configs/env/nginx/logs/
   cp -r ./configs/templates/nginx/reverse-proxy/nginx-http-proxy.conf.template ./configs/env/nginx/conf.d/$WEBSITE_HOST_NAME.conf
-fi
 }
 
 # Function which run ssl_off or ssl_on 
@@ -297,26 +301,22 @@ fi
 
 # This function use in add_domain function
 nginx_platform(){
-if [[ ! -f ./projects/$project_folder/docker-compose.yml ]]; then   
   if [[ -z $CONFIGS_PROVIDER_NGINX ]]; then  
     cp -r ./configs/templates/nginx/default/website.conf.template ./projects/"$project_folder"/configs/nginxconf/$WEBSITE_HOST_NAME.conf
-    else  
+  else
     cp -r ./configs/templates/nginx/"$CONFIGS_PROVIDER_NGINX"/website.conf.template ./projects/"$project_folder"/configs/nginxconf/$WEBSITE_HOST_NAME.conf
   fi
   # Add  another custom CONFIGS_PROVIDER_NGINX
-    sed -i '' 's/WEBSITE_HOST_NAME/'$WEBSITE_HOST_NAME'/g'  ./projects/$project_folder/configs/nginxconf/$WEBSITE_HOST_NAME.conf
-    sed -i '' 's|WEBSITE_DOCUMENT_ROOT|'$WEBSITE_DOCUMENT_ROOT'|g' ./projects/$project_folder/configs/nginxconf/$WEBSITE_HOST_NAME.conf
-fi  
+  sed -i '' 's/WEBSITE_HOST_NAME/'$WEBSITE_HOST_NAME'/g'  ./projects/$project_folder/configs/nginxconf/$WEBSITE_HOST_NAME.conf
+  sed -i '' 's|WEBSITE_DOCUMENT_ROOT|'$WEBSITE_DOCUMENT_ROOT'|g' ./projects/$project_folder/configs/nginxconf/$WEBSITE_HOST_NAME.conf
 }
 
 php_platform(){
-if [[ ! -f ./projects/$project_folder/docker-compose.yml ]]; then 
   if [[ $CONFIGS_PROVIDER_PHP = default ]]; then
     cp -r ./configs/templates/php/default/ini/xdebug.ini ./projects/"$project_folder"/configs/php/xdebug.ini
     cp -r ./configs/templates/php/default/ini/zzz-custom.ini ./projects/"$project_folder"/configs/php/zzz-custom.ini
     sed -i '' 's/xdebug_port/'$xdebug_port'/g' ./projects/"$project_folder"/configs/php/xdebug.ini
   fi
-fi
 }
 
 varnish_platform(){
@@ -329,8 +329,7 @@ sed -i '' 's/CONTAINER_WEB_NAME/'$CONTAINER_WEB_NAME'/g' ./projects/"$project_fo
 
 # Function  which add domain and sed variable
 add_domain(){
-sudo -- sh -c -e "echo '127.0.0.1 $WEBSITE_HOST_NAME' >> /etc/hosts";
-if [[ ! -f ./projects/$project_folder/docker-compose.yml ]]; then    
+  sudo -- sh -c -e "echo '127.0.0.1 $WEBSITE_HOST_NAME' >> /etc/hosts";
   sed -i '' 's/WEBSITE_HOST_NAME/'$WEBSITE_HOST_NAME'/g' ./configs/env/nginx/conf.d/$WEBSITE_HOST_NAME.conf
   sed -i '' 's|WEBSITE_DOCUMENT_ROOT|'$WEBSITE_DOCUMENT_ROOT'|g' ./configs/env/nginx/conf.d/$WEBSITE_HOST_NAME.conf
   sed -i '' 's|PROJECT_NAME|'$PROJECT_NAME'|g' ./configs/env/nginx/conf.d/$WEBSITE_HOST_NAME.conf
@@ -339,8 +338,6 @@ if [[ ! -f ./projects/$project_folder/docker-compose.yml ]]; then
   else
   sed -i '' 's|CONTAINER_WEB_NAME|'$CONTAINER_WEB_NAME'|g' ./configs/env/nginx/conf.d/$WEBSITE_HOST_NAME.conf
   fi
-fi  
-
 
 mkdir -p ./projects/$project_folder/configs/nginxconf/
 mkdir -p ./projects/$project_folder/configs/nginxlogs/
@@ -562,11 +559,11 @@ addToolsAlias
 #final restart
 service_restart
 
-#run platform tools
-run_platform_tools
-
 # Print project info
 print_info
+
+#run platform tools
+run_platform_tools
 
 #Unset
 unset_env
