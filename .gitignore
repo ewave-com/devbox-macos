@@ -1,8 +1,7 @@
 *.retry
 projects/*
 !projects/info.txt
-configs/run/
-/configs/env/nginx/
+configs/infrastructure/nginx-reverse-proxy/run
 /vendor/
 composer.lock
 
