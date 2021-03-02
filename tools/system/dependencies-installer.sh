@@ -151,7 +151,7 @@ function install_composer() {
     brew install composer composer >/dev/null
     run_composer_installer
   fi
-  
+
   return 0
 }
 
