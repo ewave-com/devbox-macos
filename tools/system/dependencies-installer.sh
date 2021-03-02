@@ -90,7 +90,7 @@ function install_unison() {
 
 function install_docker_sync() {
   if [[ -z "$(which ruby)" || -z "$(which gem)" ]]; then
-    brew install ruby >/dev/null
+    brew install ruby ruby-dev >/dev/null
   fi
 
   if [[ -z "$(which docker-sync)" ]]; then
@@ -125,8 +125,15 @@ function install_composer() {
     run_composer_installer
   fi
 
-  # locally catch the possible composer error without application stopping
-  set +e && _composer_install_output=$(composer install --quiet) && set -e
+  local _composer_output=''
+  if [[ ! -f "${devbox_root}/composer.lock" ]]; then
+    show_success_message "Running initial composer install command."
+    # locally catch the possible composer error without application stopping
+    set +e && _composer_output=$(composer install --quiet) && set -e
+  elif [[ "${composer_autoupdate}" == "1" && -n $(find "${devbox_root}/composer.lock" -mmin +604800) ]]; then
+    show_success_message "Running composer update command to refresh packages. Last run is a week ago. Please wait a few seconds"
+    set +e && _composer_output=$(composer update --quiet) && set -e
+  fi
 
   if [[ $(echo ${_composer_install_output} | grep "Fatal error") ]]; then
     # PHP 8.0+ Compatibility fix, the following error or similar might occur during 'composer install' command.

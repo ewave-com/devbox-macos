@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+require_once "${devbox_root}/tools/docker/docker.sh"
 require_once "${devbox_root}/tools/system/constants.sh"
 require_once "${devbox_root}/tools/system/output.sh"
 
@@ -335,7 +336,7 @@ function start_background_health_checker() {
 
   if [[ "${os_type}" == "macos" ]]; then
     # WinOs / MacOs specific, run Health-Checker in background
-    nohup bash "${devbox_root}/tools/docker/docker-sync-health-checker.sh" "${devbox_root}" "${_config_file}" >/dev/null &
+    nohup bash "${devbox_root}/tools/docker/docker-sync-health-checker.sh" "${_config_file}" >/dev/null &
   fi
 }
 
