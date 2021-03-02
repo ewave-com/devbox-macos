@@ -135,7 +135,7 @@ function install_composer() {
     set +e && _composer_output=$(composer update --quiet) && set -e
   fi
 
-  if [[ $(echo ${_composer_install_output} | grep "Fatal error") ]]; then
+  if [[ $(echo ${_composer_output} | grep "Fatal error") ]]; then
     # PHP 8.0+ Compatibility fix, the following error or similar might occur during 'composer install' command.
     # PHP Fatal error:  Uncaught ArgumentCountError: array_merge() does not accept unknown named parameters in /usr/share/php/Composer/DependencyResolver/DefaultPolicy.php:84
     # "composer selfupdate" is errored as well. So we need to completely reinstall composer.
