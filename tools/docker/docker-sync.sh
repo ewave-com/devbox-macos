@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-require_once "${devbox_root}/tools/docker/docker.sh"
 require_once "${devbox_root}/tools/system/constants.sh"
 require_once "${devbox_root}/tools/system/output.sh"
+require_once "${devbox_root}/tools/docker/docker.sh"
 
 ############################ Public functions ############################
 
