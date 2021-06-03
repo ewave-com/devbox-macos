@@ -5,7 +5,12 @@ require_once "${devbox_root}/tools/system/output.sh"
 
 ############################ Public functions ############################
 
+export devbox_env_path_updated="0"
+
 function install_dependencies() {
+  show_success_message "Validating software dependencies"
+
+  install_brew
   install_docker
   install_docker_sync
   install_unison
@@ -13,11 +18,29 @@ function install_dependencies() {
   install_composer
   install_extra_packages
   register_devbox_scripts_globally
+
+  if [[ "${devbox_env_path_updated}" == "1" ]]; then
+    show_warning_message "###########################################################################################"
+    show_success_message "Installed packages updated your PATH system variable."
+    show_warning_message "!!! To apply changes please close this window and start again using new console window !!!."
+    show_warning_message "###########################################################################################"
+    unset_flag_terminal_restart_required
+    exit
+  fi
+  unset_flag_terminal_restart_required
 }
 
 ############################ Public functions end ############################
 
 ############################ Local functions ############################
+
+function install_brew() {
+  if [[ -z "$(which brew)" ]]; then
+      #The Ruby Homebrew installer is now deprecated and has been rewritten in Bash
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      #ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+  fi
+}
 
 # Check and install docker
 # If docker don't install, script will setup it.
@@ -32,11 +55,6 @@ function install_docker() {
       show_warning_message "You are running docker-compose version ${_compose_version}. DevBox requires version ${_compose_min_version} or higher."
       show_warning_message "Docker and docker-compose will be tried to be updated automatically or you can reinstall Docker manually. This is one-time operation."
 
-      #      $reply = Read-Host -Prompt "Update Docker automatically?[y/n]"
-      #      if ($reply -notmatch "[yY]") {
-      #          show_warning_message "You selected manual Docker installation. Exited"
-      #          Exit 1
-      #      }
       osascript -e 'quit app "Docker"'
       sudo rm -rf "/Applications/Docker.app"
       brew uninstall --cask docker
@@ -50,7 +68,9 @@ function install_docker() {
 
       # Mac only related issue, "UnixHTTPConnectionPool(host='localhost', port=None): Read timed out"
       # https://github.com/docker/for-mac/issues/4957
+      show_warning_message "###########################################################################################"
       show_warning_message "After installation strongly recommended to disable the setting \"Use gRPC FUSE for file sharing\" in Experimental Features of Docker Settings."
+      show_warning_message "###########################################################################################"
     fi
 
     if [[ ! -z "$(ls -l /Applications | grep Docker.app)" ]]; then
@@ -71,33 +91,59 @@ function install_docker() {
 
 # Check and install unison, for mac only, not required for linux
 function install_unison() {
-  if [[ "${os_type}" == "macos" ]]; then
-    if [ -z "$(which unison)" ]; then
-      if [ -z "$(which brew)" ]; then
-        #The Ruby Homebrew installer is now deprecated and has been rewritten in Bash
-        #ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-      fi
+  if [ -z "$(which unison)" ]; then
 
-      brew install python
-      brew install unison
-      brew install eugenmayer/dockersync/unox
-      brew install autozimu/homebrew-formulas/unison-fsmonitor
-      sudo easy_install pip
-      sudo pip install macfsevents
+    if [ -z "$(which python)" ]; then
+      brew install python >/dev/null
     fi
+    brew install unison >/dev/null
+    brew install eugenmayer/dockersync/unox  >/dev/null
+    brew install autozimu/homebrew-formulas/unison-fsmonitor  >/dev/null
+    sudo easy_install pip  >/dev/null
+    sudo pip install macfsevents  >/dev/null
+  fi
+
+  # replace unison binary with corresponding version of Ocaml
+  # otherwise unison fails because brew repo version has been updated using another OCaml
+  # todo find another approach, probably by adding 'host-bin' dir to PATH
+  # used the release 2.51.3 compiled with OCaml 4.12.0
+  # https://github.com/bcpierce00/unison/releases/tag/v2.51.3
+
+  _unison_target_version="unison version 2.51.3 (ocaml 4.12.0)"
+  if [[ "$(unison -version)" != "${_unison_target_version}" ]]; then
+    # replace system unison binary
+    [[ -n "$(which realpath)" ]] && _unison_system_bin="$(realpath $(which unison))" || _unison_system_bin="$(which unison)"
+    sudo cp -f "${devbox_root}/tools/bin/host-bin/unison" "${_unison_system_bin}"
+    sudo chown "${host_user}":"${host_user_group}" "${_unison_system_bin}"
+    sudo chmod 555 "${_unison_system_bin}"
+
+    # lock current version to avoid auto-updating
+    brew pin unison
   fi
 }
 
 function install_docker_sync() {
-  if [[ -z "$(which ruby)" || -z "$(which gem)" ]]; then
-    brew install ruby ruby-dev >/dev/null
+  if [[ -z "$(which ruby)" || -z "$(which gem)" || -z $(echo "$(ruby -v)" | grep -E "^ruby\ 2\.") ]]; then
+    # ruby@2.7 required, otherwise (ruby 3.0+) very old docker-sync (like 0.1) is installed from repos instead of needed 0.5.14+
+    brew install ruby@2.7 ruby-dev >/dev/null
+
+    # lock current version
+    brew pin ruby
+
+    set_flag_terminal_restart_required
   fi
 
   if [[ -z "$(which docker-sync)" ]]; then
-    sudo gem install docker-sync --quiet >/dev/null
+    sudo gem install docker-sync -v 0.6 --quiet >/dev/null
 
-    _docker_sync_lib_sources_dir="$(dirname "$(gem which docker-sync)")"
+    set_flag_terminal_restart_required
+  fi
+
+  # sync one of docker-sync files with patched version
+  _docker_sync_lib_sources_dir="$(dirname "$(gem which docker-sync)")"
+  _target_chsum=$(md5 -q "${_docker_sync_lib_sources_dir}/docker-sync/sync_strategy/unison.rb")
+  _source_chsum=$(md5 -q "${devbox_root}/tools/bin/docker-sync/lib/docker-sync/sync_strategy/unison.rb")
+  if [[ "${_target_chsum}" != "${_source_chsum}" ]]; then
     sudo cp -f "${devbox_root}/tools/bin/docker-sync/lib/docker-sync/sync_strategy/unison.rb" "${_docker_sync_lib_sources_dir}/docker-sync/sync_strategy/unison.rb"
   fi
 }
@@ -130,6 +176,8 @@ function install_composer() {
 
   if [ -z "$(which composer)" ]; then
     run_composer_installer
+
+    set_flag_terminal_restart_required
   fi
 
   local _composer_output=''
@@ -138,7 +186,7 @@ function install_composer() {
     # locally catch the possible composer error without application stopping
     set +e && _composer_output=$(COMPOSER="${devbox_root}/composer.json" composer install --quiet) && set -e
   elif [[ "${composer_autoupdate}" == "1" && -n $(find "${devbox_root}/composer.lock" -mmin +604800) ]]; then
-    show_success_message "Running composer update command to refresh packages. Last run is a week ago. Please wait a few seconds"
+    show_success_message "Running composer update command to refresh packages. Last run was performed a week ago. Please wait a few seconds"
     set +e && _composer_output=$(COMPOSER="${devbox_root}/composer.json" composer update --quiet) && set -e
   fi
 
@@ -157,11 +205,11 @@ function install_composer() {
 
 function install_extra_packages() {
   if [[ -z "$(which openssl)" ]]; then
-    brew install openssl
+    brew install openssl >/dev/null
   fi
 
   if [[ -z "$(which gfind)" || -z "$(which realpath)" ]]; then
-    brew install coreutils findutils
+    brew install coreutils findutils >/dev/null
   fi
 }
 
@@ -170,12 +218,39 @@ function register_devbox_scripts_globally() {
   sudo chmod ug+x "${devbox_root}/down-devbox.sh"
   sudo chmod ug+x "${devbox_root}/sync-actions.sh"
 
-  if [[ -z $(echo "${PATH}" | grep "${devbox_root}" ) ]]; then
-    echo -en '\n' >> ~/.bashrc
-    echo "export PATH='${PATH}:${devbox_root}'" >> ~/.bashrc
+  add_directory_to_env_path "${devbox_root}"
+}
 
-    export PATH="${PATH}:${devbox_root}"
+function add_directory_to_env_path() {
+  local _bin_dir=${1-''}
+
+  if [[ -z "${_bin_dir}" || ! -d "${_bin_dir}" ]]; then
+    show_error_message "Unable to update system PATH. Path to binaries is empty or does not exist '${_bin_dir}'."
   fi
+
+  # add new binaries path to env variables of current shell
+  if [[ -z $(echo "${PATH}" | grep "${_bin_dir}" ) ]]; then
+    export PATH="${PATH}:${_bin_dir}"
+
+    set_flag_terminal_restart_required
+  fi
+
+  # save new binaries path to permanent user env variables storage to avoid cleaning
+  if [[ -z $(cat ~/.bash_profile | grep "export PATH=" | grep "${_bin_dir}") ]]; then
+    printf '\n# Devbox Path \n' >> ~/.bash_profile
+    echo 'export PATH="${PATH}:'${_bin_dir}'"' >> ~/.bash_profile
+
+    set_flag_terminal_restart_required
+  fi
+}
+
+function set_flag_terminal_restart_required() {
+  export devbox_env_path_updated="1"
+  exit
+}
+
+function unset_flag_terminal_restart_required() {
+  unset devbox_env_path_updated
 }
 
 ############################ Local functions end ############################
