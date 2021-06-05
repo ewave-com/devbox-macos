@@ -173,6 +173,17 @@ function install_composer() {
     rm composer-setup.php
     return $RESULT
   }
+#TODO update
+    if ($_composer_version) {
+        $_major_version = $_composer_version.SubString(0,1);
+        # https://nono.ma/github-oauth-token-for-github-com-contains-invalid-characters-on-composer-install
+        if (($_major_version -eq "1" -and [System.Version]$_composer_version -lt [System.Version]"1.10.21") -or ($_major_version -eq "2" -and [System.Version]$_composer_version -lt [System.Version]"2.0.12")) {
+            show_success_message "Your composer will be updated to the latest version"
+            Start-Process PowerShell -Wait -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass", "$env:ChocolateyInstall/bin/choco uninstall -y composer"
+            $_composer_version = $null
+        }
+    }
+
 
   if [ -z "$(which composer)" ]; then
     run_composer_installer
