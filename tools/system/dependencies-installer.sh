@@ -173,19 +173,24 @@ function install_composer() {
     rm composer-setup.php
     return $RESULT
   }
-#TODO update
-    if ($_composer_version) {
-        $_major_version = $_composer_version.SubString(0,1);
-        # https://nono.ma/github-oauth-token-for-github-com-contains-invalid-characters-on-composer-install
-        if (($_major_version -eq "1" -and [System.Version]$_composer_version -lt [System.Version]"1.10.21") -or ($_major_version -eq "2" -and [System.Version]$_composer_version -lt [System.Version]"2.0.12")) {
-            show_success_message "Your composer will be updated to the latest version"
-            Start-Process PowerShell -Wait -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass", "$env:ChocolateyInstall/bin/choco uninstall -y composer"
-            $_composer_version = $null
-        }
-    }
 
+  local _composer_version=''
+  if [[ -n "$(which composer)" ]]; then
+    _composer_version=$(echo "$(composer --no-plugins --version)" | grep -o -m 1 -E "^Composer version ([0-9.]+) " | sed 's/Composer version //' | tr -d ' ')
+    _major_version="${_composer_version:0:1}"
 
-  if [ -z "$(which composer)" ]; then
+    if [[ "${_major_version}" == "1" && ! "$(printf '%s\n' "1.10.21" "${_compose_version}" | sort -V | head -n1)" == "1.10.21" ]]; then
+      show_success_message "Your composer will be updated to the latest version"
+      brew uninstall composer >/dev/null
+      _composer_version=''
+    elif [[ "${_major_version}" == "2" && ! "$(printf '%s\n' "2.0.12" "${_compose_version}" | sort -V | head -n1)" == "2.0.12" ]]; then
+      show_success_message "Your composer will be updated to the latest version"
+      brew uninstall composer >/dev/null
+      _composer_version=''
+    fi
+  fi
+
+  if [ -z "${_composer_version}" ]; then
     run_composer_installer
 
     set_flag_terminal_restart_required
@@ -207,7 +212,7 @@ function install_composer() {
     # "composer selfupdate" is errored as well. So we need to completely reinstall composer.
     show_warning_message "An error occurred during \"composer install\" operation."
     show_warning_message "This might be caused you are using PHP 8.0+ on the host system. We will try to update composer version to fix the errors."
-    brew install composer composer >/dev/null
+    brew uninstall composer >/dev/null
     run_composer_installer
   fi
 
