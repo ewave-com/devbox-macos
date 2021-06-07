@@ -110,8 +110,9 @@ function install_unison() {
   # used the release 2.51.3 compiled with OCaml 4.12.0
   # https://github.com/bcpierce00/unison/releases/tag/v2.51.3
 
-  _unison_target_version="unison version 2.51.3 (ocaml 4.12.0)"
+  _unison_target_version="unison version 2.51.3.70 (ocaml 4.12.0)"
   if [[ "$(unison -version)" != "${_unison_target_version}" ]]; then
+    brew unpin unison
     # replace system unison binary
     [[ -n "$(which realpath)" ]] && _unison_system_bin="$(realpath $(which unison))" || _unison_system_bin="$(which unison)"
     sudo cp -f "${devbox_root}/tools/bin/host-bin/unison" "${_unison_system_bin}"
@@ -232,13 +233,13 @@ function install_extra_packages() {
 
 function register_devbox_scripts_globally() {
   # check owner execute permissions
-  if [[ $(stat -f %A "${devbox_root}/start-devbox.sh" | cut -c1) != "7" ]]; then
+  if [[ $(ls -l "${devbox_root}" | grep "start-devbox.sh" | cut -c4) != "x" ]]; then
     sudo chmod ug+x "${devbox_root}/start-devbox.sh"
   fi
-  if [[ $(stat -f %A "${devbox_root}/down-devbox.sh" | cut -c1) != "7" ]]; then
+  if [[ $(ls -l "${devbox_root}" | grep "down-devbox.sh" | cut -c4) != "x" ]]; then
     sudo chmod ug+x "${devbox_root}/down-devbox.sh"
   fi
-  if [[ $(stat -f %A "${devbox_root}/sync-actions.sh" | cut -c1) != "7" ]]; then
+  if [[ $(ls -l "${devbox_root}" | grep "sync-actions.sh" | cut -c4) != "x" ]]; then
     sudo chmod ug+x "${devbox_root}/sync-actions.sh"
   fi
 
@@ -259,6 +260,13 @@ function add_directory_to_env_path() {
     set_flag_terminal_restart_required
   fi
 
+  # create file and set executable permissions if it does not exist
+  if [[ ! -f ~/.bash_profile ]]; then
+    touch ~/.bash_profile
+  fi
+  if [[ $(ls -l ~/.bash_profile | grep ".bash_profile" | cut -c4) != "x" ]]; then
+    chmod u+x ~/.bash_profile
+  fi
   # save new binaries path to permanent user env variables storage to avoid cleaning
   if [[ -z $(cat ~/.bash_profile | grep "export PATH=" | grep "${_bin_dir}") ]]; then
     printf '\n# Devbox Path \n' >> ~/.bash_profile
