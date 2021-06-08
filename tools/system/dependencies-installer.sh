@@ -126,11 +126,20 @@ function install_unison() {
 
 function install_docker_sync() {
   if [[ -z "$(which ruby)" || -z "$(which gem)" || -z $(echo "$(ruby -v)" | grep -E "^ruby\ 2\.") ]]; then
+
+    if [[ -z $(echo "$(ruby -v)" | grep -E "^ruby\ 2\.") ]]; then
+      brew unpin ruby
+      brew uninstall --ignore-dependencies ruby >/dev/null
+    fi
     # ruby@2.7 required, otherwise (ruby 3.0+) very old docker-sync (like 0.1) is installed from repos instead of needed 0.5.14+
-    brew install ruby@2.7 ruby-dev >/dev/null
+    brew install ruby@2.7 >/dev/null
 
     # lock current version
     brew pin ruby
+
+    if [[ ! -z $(brew search ruby | grep "ruby-dev") ]]; then
+      brew install ruby-dev >/dev/null
+    fi
 
     set_flag_terminal_restart_required
   fi
@@ -142,7 +151,13 @@ function install_docker_sync() {
   fi
 
   # sync one of docker-sync files with patched version
-  _docker_sync_lib_sources_dir="$(dirname "$(gem which docker-sync)")"
+  local _docker_sync_lib_sources_dir=""
+  [[ -f $(gem which docker-sync) ]] && _docker_sync_lib_sources_dir="$(dirname "$(gem which docker-sync)")" || true
+  if [[ ! -d "${_docker_sync_lib_sources_dir}" ]]; then
+    show_error_message "Docker-sync package was not installed. Please try to reinstall it or contact DevBox developers."
+    exit
+  fi
+
   _target_chsum=$(get_file_md5_hash "${_docker_sync_lib_sources_dir}/docker-sync/sync_strategy/unison.rb")
   _source_chsum=$(get_file_md5_hash "${devbox_root}/tools/bin/docker-sync/lib/docker-sync/sync_strategy/unison.rb")
   if [[ "${_target_chsum}" != "${_source_chsum}" ]]; then
