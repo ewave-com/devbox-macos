@@ -274,6 +274,12 @@ function add_directory_to_env_path() {
 
     set_flag_terminal_restart_required
   fi
+  if [[ -z $(cat ~/.zshrc | grep "export PATH=" | grep "${_bin_dir}") ]]; then
+    printf '\n# Devbox Path \n' >> ~/.zshrc
+    echo 'export PATH="${PATH}:'${_bin_dir}'"' >> ~/.zshrc
+
+    set_flag_terminal_restart_required
+  fi
 }
 
 function set_flag_terminal_restart_required() {
