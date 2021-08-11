@@ -65,23 +65,50 @@ function install_docker() {
 
   if [ -z "${_docker_location}" ]; then
     if [[ -z "$(ls -l /Applications | grep Docker.app)" ]]; then
-      brew install --cask docker
-
+      # latest version is not stable, so install currently latest 2.* version to avoid UnixHTTPConnectionPool errors
       # Mac only related issue, "UnixHTTPConnectionPool(host='localhost', port=None): Read timed out"
       # https://github.com/docker/for-mac/issues/4957
+#      brew install --cask docker
+
+      local _dockerDmgPath="/Users/${USER}/Downloads/Docker_2.5.0.1.dmg"
+      if [[ ! -f "${_dockerDmgPath}" ]]; then
+        show_success_message "Downloading docker Dmg Application"
+#        curl --progress-bar https://desktop.docker.com/mac/stable/49550/Docker.dmg -o ${_dockerDmgPath}
+        wget -O "${_dockerDmgPath}" https://desktop.docker.com/mac/stable/49550/Docker.dmg -q --show-progress
+      fi
+      if [[ ! -f "${_dockerDmgPath}" ]]; then
+        show_error_message "Unable to download docker application. Dmg image not found."
+        show_error_message "Please install latest available 2.* version ( https://docs.docker.com/docker-for-mac/previous-versions/ ) and try again"
+        exit
+      fi
+
+      show_success_message "Attaching downloaded Dmg image to the system volumes"
+      sudo hdiutil attach "${_dockerDmgPath}" -quiet
+      if [[ -e "/Volumes/Docker/Docker.app" ]]; then
+        show_success_message "Copying Docker to /Applications"
+        sudo cp -rf /Volumes/Docker/Docker.app /Applications
+      fi
+      show_success_message "Detaching Dmg volume"
+      sudo hdiutil detach /Volumes/Docker
+
       show_warning_message "###########################################################################################"
       show_warning_message "After installation strongly recommended to disable the setting \"Use gRPC FUSE for file sharing\" in Experimental Features of Docker Settings."
       show_warning_message "###########################################################################################"
     fi
 
-    if [[ ! -z "$(ls -l /Applications | grep Docker.app)" ]]; then
+    if [[ ! -z "$(ls -l /Applications | grep "Docker.app")" ]]; then
       open "/Applications/Docker.app"
     else
       show_error_message "Unable to run docker application. Dmg image not found at path /Applications/Docker.app"
       show_error_message "Please install in and run manually"
       show_error_message "https://download.docker.com/mac/stable/Docker.dmg"
+      exit
     fi
   fi
+
+    if [[ -z $(ps aux | grep "/Applications/Docker.app" | grep -v "grep") ]]; then
+      open "/Applications/Docker.app"
+    fi
 
 # group docker does not exist for mac os, you should ensure socket target path behind symlink '/var/run/docker.sock' is executable
 # /Users/user/Library/Containers/com.docker.docker/Data/docker.sock
