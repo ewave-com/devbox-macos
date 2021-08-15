@@ -77,7 +77,7 @@ function prepare_website_ssl_certificate() {
     [[ -z "${WEBSITE_EXTRA_HOST_NAMES+x}" ]] && _extra_domains="" || _extra_domains="${WEBSITE_EXTRA_HOST_NAMES}"
 
     _ssl_dir="${devbox_infra_dir}/nginx-reverse-proxy/run/ssl"
-    if [[ -f "${_ssl_dir}/DevboxRootCA.crt" || "${_ssl_dir}/DevboxRootCA.pem" || "${_ssl_dir}/DevboxRootCA.key" ]]; then
+    if [[ ! -f "${_ssl_dir}/DevboxRootCA.crt" || ! -f "${_ssl_dir}/DevboxRootCA.pem" || ! -f "${_ssl_dir}/DevboxRootCA.key" ]]; then
       ssl_generate_root_certificate_authority "${_ssl_dir}/DevboxRootCA.crt"
       ssl_import_new_system_certificate "${_ssl_dir}/DevboxRootCA.crt"
     fi
