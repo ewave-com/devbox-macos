@@ -3,6 +3,7 @@
 require_once "${devbox_root}/tools/system/constants.sh"
 require_once "${devbox_root}/tools/system/output.sh"
 require_once "${devbox_root}/tools/system/file.sh"
+require_once "${devbox_root}/tools/devbox/devbox-state.sh"
 
 ############################ Public functions ############################
 
@@ -177,18 +178,33 @@ function install_docker_sync() {
     set_flag_terminal_restart_required
   fi
 
-  # sync one of docker-sync files with patched version
-  local _docker_sync_lib_sources_dir=""
-  [[ -f $(gem which docker-sync) ]] && _docker_sync_lib_sources_dir="$(dirname "$(gem which docker-sync)")" || true
-  if [[ ! -d "${_docker_sync_lib_sources_dir}" ]]; then
-    show_error_message "Docker-sync package was not installed. Please try to reinstall it or contact DevBox developers."
-    exit
+  _target_chsum=$(devbox_state_get_param_value 'unison_rb_hash')
+  if [[ -z "${_target_chsum}" ]]; then
+    local _docker_sync_lib_sources_dir=""
+    [[ -f $(gem which docker-sync) ]] && _docker_sync_lib_sources_dir="$(dirname "$(gem which docker-sync)")" || true
+    if [[ ! -d "${_docker_sync_lib_sources_dir}" ]]; then
+      show_error_message "Docker-sync package was not installed. Please try to reinstall it or contact DevBox developers."
+      exit
+    fi
+
+    _target_chsum=$(get_file_md5_hash "${_docker_sync_lib_sources_dir}/docker-sync/sync_strategy/unison.rb")
+    devbox_state_set_param_value 'unison_rb_hash' ${_target_chsum}
   fi
 
-  _target_chsum=$(get_file_md5_hash "${_docker_sync_lib_sources_dir}/docker-sync/sync_strategy/unison.rb")
   _source_chsum=$(get_file_md5_hash "${devbox_root}/tools/bin/docker-sync/lib/docker-sync/sync_strategy/unison.rb")
   if [[ "${_target_chsum}" != "${_source_chsum}" ]]; then
+    local _docker_sync_lib_sources_dir=""
+    [[ -f $(gem which docker-sync) ]] && _docker_sync_lib_sources_dir="$(dirname "$(gem which docker-sync)")" || true
+    if [[ ! -d "${_docker_sync_lib_sources_dir}" ]]; then
+      show_error_message "Docker-sync package was not installed. Please try to reinstall it or contact DevBox developers."
+      exit
+    fi
+
+    # sync one of docker-sync files with patched version
     sudo cp -f "${devbox_root}/tools/bin/docker-sync/lib/docker-sync/sync_strategy/unison.rb" "${_docker_sync_lib_sources_dir}/docker-sync/sync_strategy/unison.rb"
+
+    _target_chsum=$(get_file_md5_hash "${_docker_sync_lib_sources_dir}/docker-sync/sync_strategy/unison.rb")
+    devbox_state_set_param_value 'unison_rb_hash' ${_target_chsum}
   fi
 }
 
@@ -266,6 +282,10 @@ function install_composer() {
 function install_extra_packages() {
   if [[ -z "$(which openssl)" ]]; then
     brew install openssl >/dev/null
+  fi
+
+  if [[ -z "$(which jq)" ]]; then
+    brew install jq >/dev/null
   fi
 
   if [[ -z "$(which gfind)" || -z "$(which realpath)" ]]; then
