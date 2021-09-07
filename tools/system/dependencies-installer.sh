@@ -13,12 +13,12 @@ function install_dependencies() {
   show_success_message "Validating software dependencies"
 
   install_brew
+  install_common_software
   install_docker
   install_docker_sync
   install_unison
   install_git
   install_composer
-  install_extra_packages
   register_devbox_scripts_globally
 
   if [[ "${devbox_env_path_updated}" == "1" ]]; then
@@ -41,6 +41,12 @@ function install_brew() {
       #The Ruby Homebrew installer is now deprecated and has been rewritten in Bash
       bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       #ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null 2> /dev/null
+
+      if [[ -f "/opt/homebrew/bin/brew" ]]; then
+        show_success_message "Registering homebrew using calling '/opt/homebrew/bin/brew shellenv'"
+        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> /Users/${USER}/.zprofile
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      fi
   fi
 }
 
@@ -66,30 +72,45 @@ function install_docker() {
 
   if [ -z "${_docker_location}" ]; then
     if [[ -z "$(ls -l /Applications | grep Docker.app)" ]]; then
+      show_success_message "Docker Application not found. DevBox will install it for you. This might take a few minutes, please wait."
+
       # latest version is not stable, so install currently latest 2.* version to avoid UnixHTTPConnectionPool errors
       # Mac only related issue, "UnixHTTPConnectionPool(host='localhost', port=None): Read timed out"
       # https://github.com/docker/for-mac/issues/4957
 #      brew install --cask docker
 
-      local _dockerDmgPath="/Users/${USER}/Downloads/Docker_2.5.0.1.dmg"
+      local _dockerDmgPath="/Users/${USER}/Downloads/Docker_latest.dmg"
       if [[ ! -f "${_dockerDmgPath}" ]]; then
-        show_success_message "Downloading docker Dmg Application"
-#        curl --progress-bar https://desktop.docker.com/mac/stable/49550/Docker.dmg -o ${_dockerDmgPath}
-        wget -O "${_dockerDmgPath}" https://desktop.docker.com/mac/stable/49550/Docker.dmg -q --show-progress
-      fi
-      if [[ ! -f "${_dockerDmgPath}" ]]; then
-        show_error_message "Unable to download docker application. Dmg image not found."
-        show_error_message "Please install latest available 2.* version ( https://docs.docker.com/docker-for-mac/previous-versions/ ) and try again"
-        exit
+
+        local _sourceInstallPath
+        if [[ "${arch_type}" == "arm64" ]]; then
+          _sourceInstallPath="https://desktop.docker.com/mac/stable/arm64/Docker.dmg"
+        else
+          _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/Docker.dmg"
+        fi
+
+        show_success_message "Downloading docker Dmg Application for ${arch_type} architecture" "2"
+        wget -O "${_dockerDmgPath}" "${_sourceInstallPath}" -q --show-progress
+
+      else
+        show_success_message "Already downloaded docker detected. Try to install ot from ${_dockerDmgPath}" "2"
       fi
 
-      show_success_message "Attaching downloaded Dmg image to the system volumes"
+      if [[ ! -f "${_dockerDmgPath}" ]]; then
+        show_error_message "Unable to download docker application. Dmg image not found at path ${_dockerDmgPath}"
+        show_error_message "Please install download and install Docker manually and try again."
+        show_error_message "Latest Docker version: https://docs.docker.com/desktop/mac/install/"
+        show_error_message "Previous Docker versions: https://docs.docker.com/docker-for-mac/previous-versions/"
+        exit 1
+      fi
+
+      show_success_message "Attaching downloaded Dmg image to the system volumes. Please wait." "2"
       sudo hdiutil attach "${_dockerDmgPath}" -quiet
       if [[ -e "/Volumes/Docker/Docker.app" ]]; then
-        show_success_message "Copying Docker to /Applications"
+        show_success_message "Copying Docker to /Applications" "2"
         sudo cp -rf /Volumes/Docker/Docker.app /Applications
       fi
-      show_success_message "Detaching Dmg volume"
+      show_success_message "Detaching Dmg volume" "2"
       sudo hdiutil detach /Volumes/Docker
 
       show_warning_message "###########################################################################################"
@@ -98,6 +119,7 @@ function install_docker() {
     fi
 
     if [[ ! -z "$(ls -l /Applications | grep "Docker.app")" ]]; then
+      show_success_message "Opening Docker application" "2"
       open "/Applications/Docker.app"
     else
       show_error_message "Unable to run docker application. Dmg image not found at path /Applications/Docker.app"
@@ -108,6 +130,7 @@ function install_docker() {
   fi
 
     if [[ -z $(ps aux | grep "/Applications/Docker.app" | grep -v "grep") ]]; then
+      show_success_message "Opening Docker application" "2"
       open "/Applications/Docker.app"
     fi
 
@@ -279,7 +302,7 @@ function install_composer() {
   return 0
 }
 
-function install_extra_packages() {
+function install_common_software() {
   if [[ -z "$(which openssl)" ]]; then
     brew install openssl >/dev/null
   fi
@@ -288,8 +311,18 @@ function install_extra_packages() {
     brew install jq >/dev/null
   fi
 
+  if [[ -z "$(which wget)" ]]; then
+    brew install wget >/dev/null
+  fi
+
   if [[ -z "$(which gfind)" || -z "$(which realpath)" ]]; then
     brew install coreutils findutils >/dev/null
+  fi
+
+  # `which rosetta` is not valid way, so check package
+  if [[ "${arch_type}" == "arm64" && -z "$(pkgutil --files com.apple.pkg.RosettaUpdateAuto)" ]]; then
+    show_success_message "Installing Rosetta"
+    softwareupdate --install-rosetta --agree-to-license
   fi
 }
 
@@ -330,13 +363,14 @@ function add_directory_to_env_path() {
     chmod u+x ~/.bash_profile
   fi
   # save new binaries path to permanent user env variables storage to avoid cleaning
-  if [[ -z $(cat ~/.bash_profile | grep "export PATH=" | grep "${_bin_dir}") ]]; then
+  if [[ -f ~/.bash_profile && -z $(cat ~/.bash_profile | grep "export PATH=" | grep "${_bin_dir}") ]]; then
     printf '\n# Devbox Path \n' >> ~/.bash_profile
     echo 'export PATH="${PATH}:'${_bin_dir}'"' >> ~/.bash_profile
 
     set_flag_terminal_restart_required
   fi
-  if [[ -z $(cat ~/.zshrc | grep "export PATH=" | grep "${_bin_dir}") ]]; then
+
+  if [[ -f ~/.zshrc && -z $(cat ~/.zshrc | grep "export PATH=" | grep "${_bin_dir}") ]]; then
     printf '\n# Devbox Path \n' >> ~/.zshrc
     echo 'export PATH="${PATH}:'${_bin_dir}'"' >> ~/.zshrc
 
