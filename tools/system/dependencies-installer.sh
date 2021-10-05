@@ -3,6 +3,7 @@
 require_once "${devbox_root}/tools/system/constants.sh"
 require_once "${devbox_root}/tools/system/output.sh"
 require_once "${devbox_root}/tools/system/file.sh"
+require_once "${devbox_root}/tools/docker/docker.sh"
 require_once "${devbox_root}/tools/devbox/devbox-state.sh"
 
 ############################ Public functions ############################
@@ -129,16 +130,13 @@ function install_docker() {
     fi
   fi
 
-    if [[ -z $(ps aux | grep "/Applications/Docker.app" | grep -v "grep") ]]; then
-      show_success_message "Opening Docker application" "2"
-      open "/Applications/Docker.app"
-    fi
-
 # group docker does not exist for mac os, you should ensure socket target path behind symlink '/var/run/docker.sock' is executable
 # /Users/user/Library/Containers/com.docker.docker/Data/docker.sock
 #  if [[ -z $(echo "$(groups)" | grep "docker") ]]; then
 #    sudo usermod -a -G docker "${host_user}"
 #  fi
+
+  start_docker_if_not_running
 }
 
 # Check and install unison, for mac only, not required for linux
