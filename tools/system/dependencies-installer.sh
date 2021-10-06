@@ -85,8 +85,12 @@ function install_docker() {
 
         local _sourceInstallPath
         if [[ "${arch_type}" == "arm64" ]]; then
-          _sourceInstallPath="https://desktop.docker.com/mac/stable/arm64/Docker.dmg"
+          # force install docker ARM version 3.6.0 instead of latest 4.0 due to stability
+          _sourceInstallPath="https://desktop.docker.com/mac/stable/arm64/67351/Docker.dmg"
+#          _sourceInstallPath="https://desktop.docker.com/mac/stable/arm64/Docker.dmg"
         else
+          # force install docker AMD version 2.5.0 instead of latest 4.0 due to stability
+          _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/49550/Docker.dmg"
           _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/Docker.dmg"
         fi
 
