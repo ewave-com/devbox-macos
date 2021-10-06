@@ -91,7 +91,7 @@ function install_docker() {
         else
           # force install docker AMD version 2.5.0 instead of latest 4.0 due to stability
           _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/49550/Docker.dmg"
-          _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/Docker.dmg"
+#          _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/Docker.dmg"
         fi
 
         show_success_message "Downloading docker Dmg Application for ${arch_type} architecture" "2"
