@@ -13,69 +13,61 @@ export devbox_root
 
 source "${devbox_root}/tools/system/require-once.sh"
 
-require_once "${devbox_root}/tools/main.sh"
 require_once "${devbox_root}/tools/system/output.sh"
-require_once "${devbox_root}/tools/menu/select-down-type.sh"
+require_once "${devbox_root}/tools/menu/select-sync-action.sh"
+require_once "${devbox_root}/tools/menu/select-project-sync-name.sh"
 require_once "${devbox_root}/tools/menu/select-project.sh"
+require_once "${devbox_root}/tools/project/project-main.sh"
+require_once "${devbox_root}/tools/sync-main.sh"
 
 _selected_project=${1-""}
-_selected_down_type=""
+_selected_sync_action=""
+_selected_sync_name=""
 
 # Down preselected project(s) if script argument given
 if [[ -n "${_selected_project}" ]]; then
-  if [[ "${_selected_project}" == "all" ]]; then
-    _selected_down_type="stop_all"
-    _selected_project=""
-  else
-    _selected_down_type="stop_one"
-  fi
+  _selected_sync_action="restart_sync"
 fi
 
 # Interactive menu to choose the next activity with devbox
-if [[ -z "${_selected_down_type}" ]]; then
-  select_down_type_menu "_selected_down_type"
+if [[ -z "${_selected_sync_action}" ]]; then
+  select_sync_action_menu "_selected_sync_action"
 fi
 
 start_docker_if_not_running
 
-case $_selected_down_type in
-"stop_one")
+case $_selected_sync_action in
+"start_sync")
   if [[ -z "${_selected_project}" ]]; then
     select_project_menu "_selected_project"
   fi
-  stop_devbox_project "${_selected_project}"
+  start_sync "${_selected_project}"
   ;;
-"down_one")
+"stop_sync")
   if [[ -z "${_selected_project}" ]]; then
     select_project_menu "_selected_project"
   fi
-  down_devbox_project "${_selected_project}"
+  stop_sync "${_selected_project}"
   ;;
-"down_and_clean_one")
+"restart_sync")
   if [[ -z "${_selected_project}" ]]; then
     select_project_menu "_selected_project"
   fi
-  down_and_clean_devbox_project "${_selected_project}"
+  restart_sync "${_selected_project}"
   ;;
-"stop_all")
-  stop_devbox_all
-  ;;
-"down_all")
-  down_devbox_all
-  ;;
-"down_and_clean_all")
-  down_and_clean_devbox_all
-  ;;
-"docker_destroy")
-  docker_destroy
+"show_logs")
+  if [[ -z "${_selected_project}" ]]; then
+    select_project_menu "_selected_project"
+  fi
+  if [[ -z "${_selected_sync_name}" ]]; then
+    select_project_sync_name_menu ${_selected_project} '_selected_sync_name'
+  fi
+  open_log_window "${_selected_project}" "${_selected_sync_name}"
   ;;
 *)
-  show_error_message "Unable to parse your selection."
+  show_error_message "Unknown sync action."
   exit 1
   ;;
 esac
 
-show_success_message
-show_success_message "Thank you for using DevBox and have a nice day!"
-
-cat "${devbox_root}/tools/print/done.txt"
+show_success_message "Sync operation finished!"
