@@ -3,7 +3,8 @@ http://devbox.ewave.com/
 
 ## Release 3.0.1
 - [MacOs] Added fix to work around docker issue with hanging nginx in reserve-proxy container
-- [MacOs/Linux] Reduced requesting of sudo commands. You can allow netstat without password using visudo to avoid password requesting for regular work with project (start/stop).
+- [Linux/MacOs] Fixed repeated import of website SSL certificate which resulted in asking for admin privileges by every project starting/stopping with enabled HTTPS
+- [Linux/MacOs] Reduced requesting of sudo commands. You can allow netstat without password using visudo to avoid password requesting for regular work with project (start/stop).
   Add the line using visudo
   `_put_your_login_here_ ALL=NOPASSWD: /usr/bin/netstat`
 
