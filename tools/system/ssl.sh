@@ -30,8 +30,10 @@ function ssl_add_system_certificate() {
       sudo security add-trusted-cert -d -r "${_resultType}" -k "/Library/Keychains/System.keychain" "${_cert_source_path}"
     fi
   elif [[ "${os_type}" == "linux" ]]; then
-    sudo cp -r "${_cert_source_path}" "/usr/local/share/ca-certificates/"
-    sudo update-ca-certificates --fresh >/dev/null
+    if [[ ! -f "/usr/local/share/ca-certificates/$(basename ${_cert_source_path})" ]]; then
+      sudo cp -r "${_cert_source_path}" "/usr/local/share/ca-certificates/"
+      sudo update-ca-certificates --fresh >/dev/null
+    fi
   fi
 }
 
@@ -51,8 +53,10 @@ function ssl_delete_system_certificate() {
       security find-certificate -c "${_subject_search_pattern}" -a -Z "/Library/Keychains/System.keychain" | sudo awk '/SHA-1/{system("security delete-certificate -Z "$NF)}' >/dev/null
     fi
   elif [[ "${os_type}" == "linux" ]]; then
-    sudo rm -rf "/usr/local/share/ca-certificates/${_cert_source_path}" >/dev/null
-    sudo update-ca-certificates --fresh >/dev/null
+    if [[ -f "/usr/local/share/ca-certificates/${_cert_source_path}" ]]; then
+      sudo rm -rf "/usr/local/share/ca-certificates/${_cert_source_path}" >/dev/null
+      sudo update-ca-certificates --fresh >/dev/null
+    fi
   fi
 }
 
