@@ -10,7 +10,8 @@ services:
             - "443:443"
         volumes:
             - ./nginx-reverse-proxy/nginx.conf:/etc/nginx/nginx.conf
-            - ./nginx-reverse-proxy/run/conf.d:/etc/nginx/conf.d
+            # MacOs temporary fix caused by container stuck due to Docker mount issues, files are copied manually
+#            - ./nginx-reverse-proxy/run/conf.d:/etc/nginx/conf.d
             - ./nginx-reverse-proxy/run/ssl:/etc/nginx/ssl
             - ./nginx-reverse-proxy/run/logs:/var/log/nginx
         networks:
