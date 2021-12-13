@@ -87,11 +87,11 @@ function install_docker() {
         if [[ "${arch_type}" == "arm64" ]]; then
           # force install docker ARM version 3.6.0 instead of latest 4.0 due to stability
           _sourceInstallPath="https://desktop.docker.com/mac/stable/arm64/67351/Docker.dmg"
-#          _sourceInstallPath="https://desktop.docker.com/mac/stable/arm64/Docker.dmg"
+          #_sourceInstallPath="https://desktop.docker.com/mac/stable/arm64/Docker.dmg"
         else
           # force install docker AMD version 2.5.0 instead of latest 4.0 due to stability
           _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/49550/Docker.dmg"
-#          _sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/Docker.dmg"
+          #_sourceInstallPath="https://desktop.docker.com/mac/stable/amd64/Docker.dmg"
         fi
 
         show_success_message "Downloading docker Dmg Application for ${arch_type} architecture" "2"
@@ -241,6 +241,14 @@ function install_git() {
 
 # Check and install composer
 function install_composer() {
+  if [[ -z "$(which php)" ]]; then
+    # php was removed from standard macos distribution
+    brew tap shivammathur/php
+    brew install shivammathur/php/php@8.0
+
+    set_flag_terminal_restart_required
+  fi
+
   function run_composer_installer() {
     # https://getcomposer.org/doc/faqs/how-to-install-composer-programmatically.md
     composer_expected_checksum="$(curl --silent https://composer.github.io/installer.sig)"

@@ -45,8 +45,9 @@ function docker_compose_up() {
       --log-level "${docker_compose_log_level}" \
       up --detach
   else
-    docker \
-      --log-level "${docker_compose_log_level}" \
+    # --log-level option removed as Docker break this option again and again within different releases
+    # --log-level "${docker_compose_log_level}" \
+    COMPOSE_IGNORE_ORPHANS=true docker \
       compose \
       --file "${_compose_filepath}" \
       ${_env_file_option} \
@@ -97,8 +98,8 @@ function docker_compose_stop() {
       --log-level "${docker_compose_log_level}" \
       stop
   else
-    docker \
-      --log-level "${docker_compose_log_level}" \
+    # --log-level option removed as Docker break this option again and again within different releases
+    COMPOSE_IGNORE_ORPHANS=true docker \
       compose \
       --file "${_compose_filepath}" \
       ${_env_file_option} \
@@ -155,19 +156,16 @@ function docker_compose_down() {
         down --timeout 10
     fi
   else
-    # todo return log-level between 'docker' and 'compose' command parts back for linux implementation once it is fixed by docker.
-    # Current docker v20.10.9 still has log-level missing for linux, but macos v20.10.8 has the flag supported.
+    # --log-level option removed as Docker break this option again and again within different releases
     # --log-level "${docker_compose_log_level}" \
     if [[ "${_clean_volumes}" == "1" ]]; then
-      COMPOSE_HTTP_TIMEOUT=10 docker \
-        --log-level "${docker_compose_log_level}" \
+      COMPOSE_IGNORE_ORPHANS=true COMPOSE_HTTP_TIMEOUT=10 docker \
         compose \
         --file "${_compose_filepath}" \
         ${_env_file_option} \
         down --volumes --timeout 10
     else
-      COMPOSE_HTTP_TIMEOUT=10 docker \
-        --log-level "${docker_compose_log_level}" \
+      COMPOSE_IGNORE_ORPHANS=true COMPOSE_HTTP_TIMEOUT=10 docker \
         compose \
         --file "${_compose_filepath}" \
         ${_env_file_option} \
