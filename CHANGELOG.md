@@ -1,4 +1,4 @@
-# Linux DevBox
+# MacOs DevBox
 http://devbox.ewave.com/
 
 ## Release 3.0.2
