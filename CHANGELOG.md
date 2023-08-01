@@ -1,6 +1,9 @@
 # MacOs DevBox
 http://devbox.ewave.com/
 
+## Release 3.1.0
+- Added CONTAINER_RABBITMQ_PORT env settings to specify port for RabbitMQ container.
+
 ## Release 3.0.2
 - [MacOs] Added installation of PHP which has been removed from default MacOs distribution
 - [Linux/MacOs] Added compatibility with Docker 4.2 and 4.3. As a result log-level option has been removed from 'docker compose' V2 commands due to docker parsing issue.  
