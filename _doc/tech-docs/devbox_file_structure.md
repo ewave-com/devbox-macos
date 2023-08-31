@@ -13,6 +13,7 @@
     │   │   ├── docker-compose-elasticsearch.yml
     │   │   ├── docker-compose-mongodb.yml
     │   │   ├── docker-compose-mysql.yml
+    │   │   ├── docker-compose-opensearch.yml
     │   │   ├── docker-compose-postgres.yml
     │   │   ├── docker-compose-rabbitmq.yml
     │   │   ├── docker-compose-redis.yml
@@ -30,6 +31,9 @@
     │   │   │   └── unison  
     │   │   ├── node_modules                           # available docker-sync config providers for node_modules directory
     │   │   │   └── default  
+    │   │   ├── opensearch                             # available docker-sync config providers for opensearch
+    │   │   │   └── native
+    │   │   │   └── default
     │   │   └── website                                # available docker-sync config providers for website
     │   │       ├── akeneo3
     │   │       ├── akeneo4
